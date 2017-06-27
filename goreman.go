@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/joho/godotenv"
 	"gopkg.in/yaml.v2"
@@ -47,6 +48,12 @@ type procInfo struct {
 	mu      sync.Mutex
 	cond    *sync.Cond
 	waitErr error
+	ext     *extProcInfo
+}
+
+type extProcInfo struct {
+	priority int
+	delay    time.Duration
 }
 
 // process informations named with proc.
@@ -95,6 +102,38 @@ func readConfig() *config {
 	return &cfg
 }
 
+func parseExtensionProcname(p string) (procname string, ext *extProcInfo) {
+	ext = &extProcInfo{}
+	if !strings.Contains(p, "(") {
+		// original Procfile format
+		return p, ext
+	}
+	procname = strings.Split(p, "(")[0]
+	re := regexp.MustCompile(`\(([a-zA-Z0-9.=,]+)\)`)
+	extStrings := re.FindStringSubmatch(p)
+	if len(extStrings) != 2 {
+		return
+	}
+	extLine := strings.Split(extStrings[1], ",")
+	for _, l := range extLine {
+		t := strings.Split(l, "=")
+		if len(t) != 2 {
+			return
+		}
+		value, err := strconv.Atoi(t[1])
+		if err != nil {
+			return
+		}
+		switch t[0] {
+		case "delay":
+			ext.delay = time.Duration(value) * time.Millisecond
+		case "priority":
+			ext.priority = value
+		}
+	}
+	return procname, ext
+}
+
 // read Procfile and parse it.
 func readProcfile(cfg *config) error {
 	procs = map[string]*procInfo{}
@@ -114,7 +153,13 @@ func readProcfile(cfg *config) error {
 				return "%" + s[1:] + "%"
 			})
 		}
-		p := &procInfo{proc: k, cmdline: v, port: cfg.BasePort}
+		k, ext := parseExtensionProcname(k)
+		p := &procInfo{
+			proc:    k,
+			cmdline: v,
+			port:    cfg.BasePort,
+			ext:     ext,
+		}
 		p.cond = sync.NewCond(&p.mu)
 		procs[k] = p
 		cfg.BasePort++
