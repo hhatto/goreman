@@ -109,7 +109,7 @@ func parseExtensionProcname(p string) (procname string, ext *extProcInfo) {
 		return p, ext
 	}
 	procname = strings.Split(p, "(")[0]
-	re := regexp.MustCompile(`\(([a-zA-Z0-9.=,]+)\)`)
+	re := regexp.MustCompile(`\(([a-zA-Z0-9\-.=,]+)\)`)
 	extStrings := re.FindStringSubmatch(p)
 	if len(extStrings) != 2 {
 		return

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"os/signal"
+	"sort"
 	"sync"
 	"syscall"
 	"time"
@@ -76,8 +77,17 @@ func restartProc(proc string) error {
 
 // spawn all procs.
 func startProcs() error {
-	for proc := range procs {
-		startProc(proc)
+	// sort of priority
+	sortedProcs := []*procInfo{}
+	for _, proc := range procs {
+		sortedProcs = append(sortedProcs, proc)
+	}
+	sort.Slice(sortedProcs, func(i, j int) bool {
+		return sortedProcs[i].ext.priority < sortedProcs[j].ext.priority
+	})
+
+	for _, proc := range sortedProcs {
+		startProc(proc.proc)
 	}
 	sc := make(chan os.Signal, 10)
 	go func() {
