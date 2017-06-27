@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"syscall"
+	"time"
 )
 
 // spawn command that specified as proc.
@@ -20,6 +21,9 @@ func spawnProc(proc string) bool {
 	cmd.Stderr = logger
 	cmd.Env = append(os.Environ(), fmt.Sprintf("PORT=%d", procs[proc].port))
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+
+	// ext feature: delay before exec
+	time.Sleep(procs[proc].ext.delay)
 
 	fmt.Fprintf(logger, "Starting %s on port %d\n", proc, procs[proc].port)
 	err := cmd.Start()
