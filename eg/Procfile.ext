@@ -1,4 +1,4 @@
 web1: plackup --port $PORT
 web2(delay=1000): plackup --port $PORT
 web3(priority=2): bundle exec ruby web.rb
-web4(delay=2500,priority=-2): go run web.go -a :$PORT
+web4(delay=2500,priority=-2,sig=SIGABORT): go run web.go -a :$PORT
