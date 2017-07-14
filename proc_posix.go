@@ -65,5 +65,5 @@ func terminateProc(proc string) error {
 	if err != nil {
 		return err
 	}
-	return target.Signal(syscall.SIGHUP)
+	return target.Signal(procs[proc].ext.sig)
 }

@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -54,6 +55,7 @@ type procInfo struct {
 type extProcInfo struct {
 	priority int
 	delay    time.Duration
+	sig      syscall.Signal
 }
 
 // process informations named with proc.
@@ -102,8 +104,42 @@ func readConfig() *config {
 	return &cfg
 }
 
+func getSignalFromString(sig string) syscall.Signal {
+	s := strings.ToUpper(sig)
+	switch s {
+	case "SIGABRT":
+		return syscall.SIGABRT
+	case "SIGALRM":
+		return syscall.SIGALRM
+	case "SIGCONT":
+		return syscall.SIGCONT
+	case "SIGHUP":
+		return syscall.SIGHUP
+	case "SIGINT":
+		return syscall.SIGINT
+	case "SIGKILL":
+		return syscall.SIGKILL
+	case "SIGQUIT":
+		return syscall.SIGQUIT
+	case "SIGSTOP":
+		return syscall.SIGSTOP
+	case "SIGSYS":
+		return syscall.SIGSYS
+	case "SIGTERM":
+		return syscall.SIGTERM
+	case "SIGTRAP":
+		return syscall.SIGTRAP
+	case "SIGUSR1":
+		return syscall.SIGUSR1
+	case "SIGUSR2":
+		return syscall.SIGUSR2
+	}
+	fmt.Printf("not support signal. sig=[%s]. use default(SIGHUP)\n", s)
+	return syscall.SIGHUP
+}
+
 func parseExtensionProcname(p string) (procname string, ext *extProcInfo) {
-	ext = &extProcInfo{}
+	ext = &extProcInfo{sig: syscall.SIGHUP}
 	if !strings.Contains(p, "(") {
 		// original Procfile format
 		return p, ext
@@ -120,15 +156,21 @@ func parseExtensionProcname(p string) (procname string, ext *extProcInfo) {
 		if len(t) != 2 {
 			return
 		}
-		value, err := strconv.Atoi(t[1])
-		if err != nil {
-			return
-		}
 		switch t[0] {
 		case "delay":
+			value, err := strconv.Atoi(t[1])
+			if err != nil {
+				return
+			}
 			ext.delay = time.Duration(value) * time.Millisecond
 		case "priority":
+			value, err := strconv.Atoi(t[1])
+			if err != nil {
+				return
+			}
 			ext.priority = value
+		case "sig":
+			ext.sig = getSignalFromString(t[1])
 		}
 	}
 	return procname, ext
